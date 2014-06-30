@@ -43,11 +43,13 @@ package npipe
 
 import (
 	"fmt"
+	"github.com/contester/runlib/win32"
 	"io"
 	"net"
 	"os"
 	"syscall"
 	"time"
+	"unsafe"
 )
 
 const (
@@ -472,11 +474,20 @@ func createPipe(address string, first bool) (syscall.Handle, error) {
 	if first {
 		mode |= file_flag_first_pipe_instance
 	}
+
+	sd, err := win32.CreateSecurityDescriptor(1)
+	win32.SetSecurityDescriptorDacl(sd, true, nil, false)
+	var sa syscall.SecurityAttributes
+	sa.Length = uint32(unsafe.Sizeof(sa))
+	sa.SecurityDescriptor = uintptr(unsafe.Pointer(&sd[0]))
+
+	sa.InheritHandle = 1
+
 	return createNamedPipe(n,
 		mode,
 		pipe_type_byte,
 		pipe_unlimited_instances,
-		512, 512, 0, nil)
+		512, 512, 0, &sa)
 }
 
 func badAddr(addr string) PipeError {
